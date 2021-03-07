@@ -13,6 +13,7 @@
     [com.fulcrologic.fulcro.algorithms.merge :as merge]
     [com.fulcrologic.fulcro-css.css :as css]
     [com.fulcrologic.fulcro.algorithms.form-state :as fs]
+    [com.fulcrologic.fulcro.networking.file-upload :as file-upload]
     [taoensso.timbre :as log]))
 
 (defn field [{:keys [label valid? error-message] :as props}]
@@ -173,6 +174,7 @@
 
 (def ui-session (comp/factory Session))
 
+
 (defsc TopChrome [this {:root/keys [router current-session login]}]
   {:query         [{:root/router (comp/get-query TopRouter)}
                    {:root/current-session (comp/get-query Session)}
@@ -197,7 +199,35 @@
 
 (def ui-top-chrome (comp/factory TopChrome))
 
+
+;; File upload test
+;; ##################################
+;; => Error: Cannot write Function
+;; => "Exception while converting mutation with file uploads."
+(defsc AQuery
+  [_this _props]
+  {:ident :some/ident
+   :query [:some/ident]})
+
+
+(defmutation test-file-upload
+  [_]
+  (action [_env]
+    (log/info "Sending file to backend."))
+  (ok-action [env]
+    (log/info "OK action"))
+  (error-action [env]
+    (log/info "Error action"))
+  (remote [env]
+    (m/returning env AQuery)))
+
+
 (defsc Root [this {:root/keys [top-chrome]}]
   {:query         [{:root/top-chrome (comp/get-query TopChrome)}]
    :initial-state {:root/top-chrome {}}}
-  (ui-top-chrome top-chrome))
+  (dom/input {:type     "file"
+              :accept   "image/jpeg,image/png"
+              ;; Set `:multiple true` if you want to upload more than one at a time
+              :onChange (fn [evt]
+                          (let [files (file-upload/evt->uploads evt)]
+                            (comp/transact! this [(test-file-upload (file-upload/attach-uploads {} files))])))}))
